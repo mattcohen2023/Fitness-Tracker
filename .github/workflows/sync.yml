@@ -1,0 +1,45 @@
+name: Daily Whoop Sync
+
+on:
+  schedule:
+    # Runs at 10:00 UTC daily (6:00am ET). Adjust to taste.
+    # Note: GitHub Actions scheduler can run up to ~15 minutes late.
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    # Allows manual runs from the Actions tab in GitHub — useful for backfills
+    # or re-running after a failure without waiting for the next scheduled run.
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write Whoop credentials
+        # Restores the saved OAuth tokens so the sync can silently refresh
+        # the access token without triggering the browser auth flow.
+        # If this step fails, re-run the OAuth flow locally and update the secret:
+        #   python -m src.sync_whoop --verbose   (run locally once)
+        #   then update WHOOP_CREDENTIALS in GitHub → Settings → Secrets
+        run: echo '${{ secrets.WHOOP_CREDENTIALS }}' > .whoop_credentials.json
+
+      - name: Run Whoop → Notion sync
+        run: python -m src.sync_whoop
+        env:
+          NOTION_API_KEY:       ${{ secrets.NOTION_API_KEY }}
+          WHOOP_RECOVERY_DB_ID: ${{ secrets.WHOOP_RECOVERY_DB_ID }}
+          WHOOP_CLIENT_ID:      ${{ secrets.WHOOP_CLIENT_ID }}
+          WHOOP_CLIENT_SECRET:  ${{ secrets.WHOOP_CLIENT_SECRET }}
+          WHOOP_REDIRECT_URI:   ${{ secrets.WHOOP_REDIRECT_URI }}
