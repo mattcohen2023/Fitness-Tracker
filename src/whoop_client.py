@@ -300,6 +300,18 @@ class WhoopClient:
             tokens = self._post_token_endpoint(payload)
             self._store_tokens(tokens)
         except WhoopAuthError:
+            # In CI environments (GitHub Actions etc.) there is no browser
+            # available, so falling back to the OAuth flow would hang for
+            # 120s and then crash with a confusing error. Fail fast instead
+            # with clear instructions.
+            if os.environ.get("CI"):
+                raise WhoopAuthError(
+                    "Token refresh failed in CI. Your WHOOP_CREDENTIALS secret "
+                    "is likely expired or invalid.\n"
+                    "Fix: run 'python -m src.sync_whoop --verbose' locally to "
+                    "re-authorize, then update the WHOOP_CREDENTIALS secret in "
+                    "GitHub → Settings → Secrets with the new .whoop_credentials.json contents."
+                )
             logger.warning("Token refresh failed — re-running OAuth flow")
             self._run_oauth_flow()
 
