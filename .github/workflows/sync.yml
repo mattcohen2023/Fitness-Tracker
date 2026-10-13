@@ -47,3 +47,12 @@ jobs:
           WHOOP_CLIENT_ID:      ${{ secrets.WHOOP_CLIENT_ID }}
           WHOOP_CLIENT_SECRET:  ${{ secrets.WHOOP_CLIENT_SECRET }}
           WHOOP_REDIRECT_URI:   ${{ secrets.WHOOP_REDIRECT_URI }}
+
+      - name: Save rotated Whoop credentials back to GitHub
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -s .whoop_credentials.json ]; then
+            gh secret set WHOOP_CREDENTIALS --repo "${{ github.repository }}" < .whoop_credentials.json
+          fi
